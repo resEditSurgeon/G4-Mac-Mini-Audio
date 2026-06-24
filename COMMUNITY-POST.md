@@ -87,22 +87,23 @@ Not solved, but here's the map so nobody re-treads dead ends:
   scaling PCM samples in software.
 - **Scaling PCM works** — reducing 16-bit sample amplitude is audibly quieter on this DAC
   (no normalization). So graduated volume is physically possible.
-- **Boot-time component capture works** — a CodeWarrior INIT can `RegisterComponent` +
-  `CaptureComponent('awgc')` at startup and interpose on the output path (the captured
-  `'awgc'` disappears from `FindNextComponent` and all audio routes through the wrapper).
-  Runtime capture from an app is too late — the Sound Manager opens its output device once,
-  early, and keeps it.
-- **The wall:** a captured output-device wrapper that delegates to a *separately re-opened*
-  `'awgc'` instance produces **silence** — no audio reaches the DAC even when we overwrite
-  the buffer at both `SoundComponentGetSourceData` (pull) and `SoundComponentPlaySourceBuffer`
-  (push). The re-opened instance apparently doesn't drive the I²S/DBDMA hardware the way the
-  Sound Manager's own setup does.
+- **Component interposition from an INIT does NOT work here** (this corrects an earlier guess).
+  A CodeWarrior INIT can `RegisterComponent` + `CaptureComponent` at boot, but the Sound Manager
+  opens BOTH the output device (`'awgc'`) and the mixer (`'mixr'`/`'mixw'`) *before* any INIT
+  runs, and keeps those handles — so the captured wrapper is **never called at all**. I confirmed
+  this with a diagnostic INIT that counts every SoundComponent selector: zero opens, zero calls,
+  for both `'awgc'` and the mixer, even with audio playing. Capturing `'awgc'` only *breaks*
+  audio (silence); capturing the mixer doesn't even do that — the SM keeps using the instance it
+  already had. (Runtime capture from an app is later still.)
+- **Registering our own component via a `'thng'` resource** — so the SM would select it — is
+  blocked by the toolchain: with no 68K compiler we can't build a component file the Component
+  Manager will load (it fails `cfragFragmentFormatErr` on our PPC-only CFM fragment).
 
-**If you know how the Sound Manager wires its output device to the Intrepid I²S/DBDMA on
-these machines — or have made an interposing/effect sound output component work on OS 9 —
-I'd love pointers.** The alternative route (scaling the DBDMA transmit buffer at
-`mac-io + 0x8200` directly) is untried; it's complicated by physical-vs-logical addressing
-and a live-DMA race.
+So the Sound Manager component layer is a dead end on this machine. The **only remaining avenue
+is scaling the DBDMA transmit buffer at `mac-io + 0x8200` directly**, bypassing the Sound Manager
+entirely. It's untried and hard: the DBDMA descriptors/buffers live at physical addresses (need
+logical mapping) and there's a live-DMA race. **If you've driven the Intrepid I²S/DBDMA directly
+on these machines, or know another way into the mixed-audio stream under OS 9, I'd love pointers.**
 
 ## Credit
 

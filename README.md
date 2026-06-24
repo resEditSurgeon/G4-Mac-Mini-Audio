@@ -8,8 +8,10 @@ Built on top of **[matouspikous's](https://github.com/matouspikous) "MacMiniAudi
 amp-enable INIT (`MacLegacyLabs`), which restores full-volume audio at boot. This project
 adds the everyday-use pieces that were still missing. See **[CREDITS](#credits)**.
 
-> ⚠️ **Graduated (slider) volume is not solved** on this machine — there's no hardware gain,
-> and the software-mixer route hits a wall. The investigation is written up in
+> ⚠️ **Graduated (slider) volume is not achievable in software on this machine.** There's no
+> hardware gain, and the Sound Manager opens its output device *and* the mixer before any INIT
+> can interpose — so a component wrapper is never called (confirmed on hardware). The only
+> untried avenue is driving the DBDMA buffer directly. Full investigation + open challenge in
 > [COMMUNITY-POST.md](COMMUNITY-POST.md); pointers welcome.
 
 ## The hardware problem (short version)
@@ -71,7 +73,8 @@ resident PowerPC `INIT` code resource. Recipe in [`init/README.md`](init/README.
 - ✅ **Real mute** — park the amp pins at `0x01` (driven low, no HP-jack leak).
 - ✅ **Headphone auto-switch** — poll `0x67`, route `0x6F`/`0x70`. Instant on insert,
   ~1 s on removal (detect-pin settling, not software).
-- ⛔ **Graduated volume** — not solved; see the write-up in [COMMUNITY-POST.md](COMMUNITY-POST.md).
+- ⛔ **Graduated volume** — not achievable in software here (component layer unreachable from an
+  INIT; only the DBDMA route remains, untried). See the write-up in [COMMUNITY-POST.md](COMMUNITY-POST.md).
 
 ## Credits
 
