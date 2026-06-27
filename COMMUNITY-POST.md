@@ -59,8 +59,9 @@ enabling one amp pin at a time and listening. `0x6E`/`0x79` produced no sound al
    detect-pin settling, not software).
 
 3. **Delivered as a Control Strip module** — the native OS 9 idiom for a persistent widget.
-   It shows `Spk`/`Hph`, switches automatically, and a click mutes/unmutes. Stays resident
-   while the Control Strip is on, and works even when the strip is collapsed.
+   It shows a speaker / headphones / mute icon for the current state, switches automatically,
+   and a click mutes/unmutes. Stays resident while the Control Strip is on, and works even
+   when the strip is collapsed.
 
 Install: keep the amp-enable INIT in Extensions (it provides boot audio), and drop the
 Control Strip module into `System Folder:Control Strip Modules:`.

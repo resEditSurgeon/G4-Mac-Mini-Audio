@@ -49,8 +49,9 @@ build.sh              Builds the Control Strip module + the diagnostic app
    (or build the version in [`init/`](init/README.md) with CodeWarrior). This provides boot
    audio; everything else depends on it.
 2. **Control Strip module** — mount `prebuilt/MiniAudioStrip.img`, copy `MiniAudioStrip` into
-   `System Folder:Control Strip Modules:`, reboot. The tile shows `Spk`/`Hph`, auto-switches
-   on headphone insert, and **click to mute/unmute**.
+   `System Folder:Control Strip Modules:`, reboot. The tile shows a **speaker / headphones /
+   mute icon** for the current state, auto-switches on headphone insert, and **click to
+   mute/unmute**.
 3. **(Optional) diagnostic app** — `prebuilt/MiniAudioTool.img` lets you read GPIO pins and
    drive the amps by hand. It never touches the boot path.
 

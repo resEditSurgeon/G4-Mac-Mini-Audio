@@ -44,12 +44,13 @@ endif()
 add_custom_command(
     OUTPUT MiniAudioStrip.bin MiniAudioStrip.dsk
     COMMAND ${REZ} ${REZ_INCLUDE_FLAG}
+                    -I${CMAKE_CURRENT_SOURCE_DIR}
                     ${CMAKE_CURRENT_SOURCE_DIR}/mini_audio_strip.r
                     -o MiniAudioStrip.bin
                     --cc MiniAudioStrip.dsk
                     -t sdev
                     -c MmAc
-    DEPENDS MiniAudioStrip.pef mini_audio_strip.r)
+    DEPENDS MiniAudioStrip.pef mini_audio_strip.r mini_audio_strip_icons.r)
 add_custom_target(MiniAudioStrip_sdev ALL DEPENDS MiniAudioStrip.dsk)
 
 # Wrap the raw HFS .dsk in an Apple Partition Map so OS 9 can mount it.

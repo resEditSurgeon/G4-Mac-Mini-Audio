@@ -31,6 +31,7 @@
 #include <ControlStrip.h>
 #include <Quickdraw.h>
 #include <Fonts.h>
+#include <Icons.h>
 #include <MacTypes.h>
 #include <NameRegistry.h>
 #include <DriverServices.h>
@@ -51,11 +52,20 @@ extern pascal void DisposePtr(Ptr p);
 
 #define kCellPad        6
 
+/* State icons (16x16 small-icon suites; ics#/ics4 in mini_audio_strip_icons.r). */
+#define kIconSpk        128
+#define kIconHph        129
+#define kIconMut        130
+#define kIconSize       16
+
 /* Per-instance state, held in the refCon (NEVER fragment globals). */
 typedef struct {
     UInt32  base;        /* mac-io base, 0 if not found */
     UInt8   lastDetect;  /* last (0x67 & 0x02) applied  */
     Boolean muted;
+    Handle  icSpk;       /* detached small-icon suites (NULL if load failed) */
+    Handle  icHph;
+    Handle  icMut;
 } AudioState;
 
 /* ============================================================= */
@@ -193,6 +203,12 @@ pascal long MiniAudioStrip(long message, long params,
                 newst->base = FindMacIOBase();
                 newst->muted = false;
                 newst->lastDetect = 0xFF;          /* force first apply */
+                /* Detach our state icons from the module's own resources.
+                 * NULL on failure -> draw falls back to a text label. */
+                newst->icSpk = newst->icHph = newst->icMut = NULL;
+                SBGetDetachIconSuite(&newst->icSpk, kIconSpk, svAllSmallData);
+                SBGetDetachIconSuite(&newst->icHph, kIconHph, svAllSmallData);
+                SBGetDetachIconSuite(&newst->icMut, kIconMut, svAllSmallData);
                 if (newst->base != 0)
                     ApplyRouting(newst);
             }
@@ -205,6 +221,9 @@ pascal long MiniAudioStrip(long message, long params,
                     WG(st->base, GPIO_HP,  AMP_ON);
                     WG(st->base, GPIO_SPK, AMP_ON);
                 }
+                if (st->icSpk != NULL) DisposeIconSuite(st->icSpk, true);
+                if (st->icHph != NULL) DisposeIconSuite(st->icHph, true);
+                if (st->icMut != NULL) DisposeIconSuite(st->icMut, true);
                 DisposePtr((Ptr)st);
             }
             return 0;
@@ -212,12 +231,17 @@ pascal long MiniAudioStrip(long message, long params,
         case sdevFeatures:
             return (1L << sdevWantMouseClicks);
 
-        case sdevGetDisplayWidth: {
-            Str255 label;
-            SetupStripFont(statusPort);
-            BuildLabel(st, label);
-            return StringWidth(label) + kCellPad;
-        }
+        case sdevGetDisplayWidth:
+            /* Fixed icon cell; the text fallback ("??") also fits in this width. */
+            if (st != NULL && st->base != 0 &&
+                (st->icSpk != NULL || st->icHph != NULL || st->icMut != NULL))
+                return kIconSize + kCellPad;
+            {
+                Str255 label;
+                SetupStripFont(statusPort);
+                BuildLabel(st, label);
+                return StringWidth(label) + kCellPad;
+            }
 
         case sdevPeriodicTickle:
             if (st != NULL && st->base != 0 && !st->muted) {
@@ -230,9 +254,27 @@ pascal long MiniAudioStrip(long message, long params,
             return 0;
 
         case sdevDrawStatus: {
-            Str255 label;
-            BuildLabel(st, label);
-            DrawCenteredText(statusPort, statusRect, label);
+            Handle suite = NULL;
+            if (st != NULL && st->base != 0) {
+                if (st->muted)               suite = st->icMut;
+                else if (st->lastDetect == 0) suite = st->icHph;
+                else                          suite = st->icSpk;
+            }
+            if (suite != NULL) {
+                Rect  r;
+                short h = statusRect->bottom - statusRect->top;
+                short w = statusRect->right - statusRect->left;
+                if (statusPort != NULL) SetPort(statusPort);
+                r.left   = statusRect->left + (w - kIconSize) / 2;
+                r.top    = statusRect->top  + (h - kIconSize) / 2;
+                r.right  = r.left + kIconSize;
+                r.bottom = r.top  + kIconSize;
+                PlotIconSuite(&r, atAbsoluteCenter, ttNone, suite);
+            } else {                          /* no icon (?? / load failed) */
+                Str255 label;
+                BuildLabel(st, label);
+                DrawCenteredText(statusPort, statusRect, label);
+            }
             return 0;
         }
 
